@@ -1,3 +1,40 @@
+## 2.6.4 (2022-05-24)
+
+- Fixed error with caching
+
+## 2.6.3 (2022-05-11)
+
+- Fixed error with canceling queries
+
+## 2.6.2 (2022-05-06)
+
+- Fixed error with Postgres when prepared statements are disabled with Rails < 6.1
+
+## 2.6.1 (2022-04-21)
+
+- Added `region` setting to Amazon Athena
+- Fixed error with MySQL for Rails < 7
+- Fixed error with binary data
+
+## 2.6.0 (2022-04-20)
+
+- Fixed quoting issue with variables
+- Custom adapters now need to specify how to quote variables in queries
+- Added experimental support for Propshaft
+- Fixed error with empty results with InfluxDB
+
+## 2.5.0 (2022-01-04)
+
+- Added support for Slack OAuth tokens
+- Added experimental support for AnomalyDetection.rb
+- Improved table preview for MySQL
+- Fixed cohort analysis for MySQL
+
+## 2.4.8 (2021-12-07)
+
+- Added support for OpenSearch
+- Removed `elasticsearch-xpack` dependency for Elasticsearch
+
 ## 2.4.7 (2021-09-25)
 
 - Made Action Mailer optional

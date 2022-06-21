@@ -56,6 +56,8 @@ module Blazer
             "time"
           elsif v.nil?
             nil
+          elsif v.is_a?(String) && v.encoding == Encoding::BINARY
+            "binary"
           else
             "string"
           end
@@ -188,6 +190,10 @@ module Blazer
         value < lower || value > upper
       when "trend"
         anomalies = Trend.anomalies(Hash[series])
+        anomalies.include?(series.last[0])
+      when "anomaly_detection"
+        period = 7 # TODO determine period
+        anomalies = AnomalyDetection.detect(Hash[series], period: period)
         anomalies.include?(series.last[0])
       else
         csv_str =

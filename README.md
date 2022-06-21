@@ -10,6 +10,8 @@ Blazer is also available as a [Docker image](https://github.com/ankane/blazer-do
 
 :tangerine: Battle-tested at [Instacart](https://www.instacart.com/opensource)
 
+[![Build Status](https://github.com/ankane/blazer/workflows/build/badge.svg?branch=master)](https://github.com/ankane/blazer/actions)
+
 ## Features
 
 - **Multiple data sources** - PostgreSQL, MySQL, Redshift, and [many more](#full-list)
@@ -37,7 +39,7 @@ Blazer is also available as a [Docker image](https://github.com/ankane/blazer-do
 Add this line to your application’s Gemfile:
 
 ```ruby
-gem 'blazer'
+gem "blazer"
 ```
 
 Run:
@@ -59,7 +61,7 @@ For production, specify your database:
 ENV["BLAZER_DATABASE_URL"] = "postgres://user:password@hostname:5432/database"
 ```
 
-Blazer tries to protect against queries which modify data (by running each query in a transaction and rolling it back), but a safer approach is to use a read-only user. [See how to create one](#permissions).
+When possible, Blazer tries to protect against queries which modify data by running each query in a transaction and rolling it back, but a safer approach is to use a read-only user. [See how to create one](#permissions).
 
 #### Checks (optional)
 
@@ -142,16 +144,14 @@ Be sure to render or redirect for unauthorized users.
 
 ## Permissions
 
-Blazer runs each query in a transaction and rolls it back to prevent queries from modifying data. As an additional line of defense, we recommend using a read only user.
-
 ### PostgreSQL
 
-Create a user with read only permissions:
+Create a user with read-only permissions:
 
 ```sql
 BEGIN;
-CREATE ROLE blazer LOGIN PASSWORD 'secret123';
-GRANT CONNECT ON DATABASE database_name TO blazer;
+CREATE ROLE blazer LOGIN PASSWORD 'secret';
+GRANT CONNECT ON DATABASE dbname TO blazer;
 GRANT USAGE ON SCHEMA public TO blazer;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO blazer;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO blazer;
@@ -160,19 +160,20 @@ COMMIT;
 
 ### MySQL
 
-Create a user with read only permissions:
+Create a user with read-only permissions:
 
 ```sql
-GRANT SELECT, SHOW VIEW ON database_name.* TO blazer@’127.0.0.1′ IDENTIFIED BY ‘secret123‘;
+CREATE USER 'blazer'@'127.0.0.1' IDENTIFIED BY 'secret';
+GRANT SELECT, SHOW VIEW ON dbname.* TO 'blazer'@'127.0.0.1';
 FLUSH PRIVILEGES;
 ```
 
 ### MongoDB
 
-Create a user with read only permissions:
+Create a user with read-only permissions:
 
-```
-db.createUser({user: "blazer", pwd: "password", roles: ["read"]})
+```javascript
+db.createUser({user: "blazer", pwd: "secret", roles: ["read"]})
 ```
 
 Also, make sure authorization is enabled when you start the server.
@@ -412,7 +413,7 @@ SELECT users.id AS user_id, orders.created_at AS conversion_time, users.created_
 FROM users LEFT JOIN orders ON orders.user_id = users.id
 ```
 
-This feature requires PostgreSQL or MySQL.
+This feature requires PostgreSQL or MySQL 8.
 
 ## Anomaly Detection
 
@@ -423,7 +424,7 @@ Blazer supports three different approaches to anomaly detection.
 Add [prophet-rb](https://github.com/ankane/prophet) to your Gemfile:
 
 ```ruby
-gem 'prophet-rb'
+gem "prophet-rb"
 ```
 
 And add to `config/blazer.yml`:
@@ -439,7 +440,7 @@ anomaly_checks: prophet
 Add [trend](https://github.com/ankane/trend) to your Gemfile:
 
 ```ruby
-gem 'trend'
+gem "trend"
 ```
 
 And add to `config/blazer.yml`:
@@ -454,45 +455,19 @@ For the [self-hosted API](https://github.com/ankane/trend-api), create an initia
 Trend.url = "http://localhost:8000"
 ```
 
-### R
+### AnomalyDetection.rb (experimental)
 
-R uses Twitter’s [AnomalyDetection](https://github.com/twitter/AnomalyDetection) library.
+Add [anomaly_detection](https://github.com/ankane/AnomalyDetection.rb) to your Gemfile:
 
-First, [install R](https://cloud.r-project.org/). Then, run:
-
-```R
-install.packages("remotes")
-remotes::install_github("twitter/AnomalyDetection")
+```ruby
+gem "anomaly_detection"
 ```
 
 And add to `config/blazer.yml`:
 
 ```yml
-anomaly_checks: r
+anomaly_checks: anomaly_detection
 ```
-
-If upgrading from version 1.4 or below, also follow the [upgrade instructions](#15).
-
-If you’re on Heroku, follow the additional instructions below.
-
-### R on Heroku
-
-Add the [R buildpack](https://github.com/virtualstaticvoid/heroku-buildpack-r) to your app.
-
-```sh
-heroku buildpacks:add --index 1 https://github.com/virtualstaticvoid/heroku-buildpack-r.git
-```
-
-And create an `init.R` with:
-
-```r
-if (!"AnomalyDetection" %in% installed.packages()) {
-  install.packages("remotes")
-  remotes::install_github("twitter/AnomalyDetection")
-}
-```
-
-Commit and deploy away. The first deploy may take a few minutes.
 
 ## Forecasting
 
@@ -502,10 +477,10 @@ A forecast link will appear for queries that return 2 columns with types timesta
 
 ### Prophet
 
-Add [prophet](https://github.com/ankane/prophet) to your Gemfile:
+Add [prophet-rb](https://github.com/ankane/prophet) to your Gemfile:
 
 ```ruby
-gem 'prophet-rb', '>= 0.2.1'
+gem "prophet-rb", ">= 0.2.1"
 ```
 
 And add to `config/blazer.yml`:
@@ -516,18 +491,24 @@ forecasting: prophet
 
 ### Trend
 
-[Trend](https://trendapi.org/) uses an external service.
+[Trend](https://trendapi.org/) uses an external service by default, but you can run it on your own infrastructure as well.
 
 Add [trend](https://github.com/ankane/trend) to your Gemfile:
 
 ```ruby
-gem 'trend'
+gem "trend"
 ```
 
 And add to `config/blazer.yml`:
 
 ```yml
 forecasting: trend
+```
+
+For the [self-hosted API](https://github.com/ankane/trend-api), create an initializer with:
+
+```ruby
+Trend.url = "http://localhost:8000"
 ```
 
 ## Uploads
@@ -592,6 +573,7 @@ data_sources:
 - [MongoDB](#mongodb-1)
 - [MySQL](#mysql-1)
 - [Neo4j](#neo4j)
+- [OpenSearch](#opensearch)
 - [Oracle](#oracle)
 - [PostgreSQL](#postgresql-1)
 - [Presto](#presto)
@@ -626,6 +608,7 @@ data_sources:
     workgroup: primary
     access_key_id: ...
     secret_access_key: ...
+    region: ...
 ```
 
 Here’s an example IAM policy:
@@ -673,6 +656,8 @@ data_sources:
     url: redshift://user:password@hostname:5439/database
 ```
 
+Use a [read-only user](https://docs.aws.amazon.com/redshift/latest/dg/r_GRANT.html).
+
 ### Apache Drill
 
 Add [drill-sergeant](https://github.com/ankane/drill-sergeant) to your Gemfile and set:
@@ -683,6 +668,8 @@ data_sources:
     adapter: drill
     url: http://hostname:8047
 ```
+
+Use a [read-only user](https://drill.apache.org/docs/roles-and-privileges/).
 
 ### Apache Hive
 
@@ -707,6 +694,8 @@ data_sources:
     url: ignite://user:password@hostname:10800
 ```
 
+Use a [read-only user](https://www.gridgain.com/docs/latest/administrators-guide/security/authorization-permissions) (requires a third-party plugin).
+
 ### Apache Spark
 
 Add [hexspace](https://github.com/ankane/hexspace) to your Gemfile and set:
@@ -722,13 +711,15 @@ Use a read-only user. Requires the [Thrift server](https://spark.apache.org/docs
 
 ### Cassandra
 
-Add [cassandra-driver](https://github.com/datastax/ruby-driver) to your Gemfile and set:
+Add [cassandra-driver](https://github.com/datastax/ruby-driver) (and [sorted_set](https://github.com/knu/sorted_set) for Ruby 3+) to your Gemfile and set:
 
 ```yml
 data_sources:
   my_source:
     url: cassandra://user:password@hostname:9042/keyspace
 ```
+
+Use a [read-only role](https://docs.datastax.com/en/cql-oss/3.3/cql/cql_using/useSecurePermission.html).
 
 ### Druid
 
@@ -741,9 +732,11 @@ data_sources:
     url: http://hostname:8082
 ```
 
+Use a [read-only role](https://druid.apache.org/docs/latest/development/extensions-core/druid-basic-security.html).
+
 ### Elasticsearch
 
-Add [elasticsearch](https://github.com/elastic/elasticsearch-ruby) and [elasticsearch-xpack](https://github.com/elastic/elasticsearch-ruby/tree/master/elasticsearch-xpack) to your Gemfile and set:
+Add [elasticsearch](https://github.com/elastic/elasticsearch-ruby) to your Gemfile and set:
 
 ```yml
 data_sources:
@@ -751,6 +744,8 @@ data_sources:
     adapter: elasticsearch
     url: http://user:password@hostname:9200
 ```
+
+Use a [read-only role](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-privileges.html).
 
 ### Google BigQuery
 
@@ -774,6 +769,8 @@ data_sources:
     url: ibm-db://user:password@hostname:50000/database
 ```
 
+Use a [read-only user](https://www.ibm.com/support/pages/creating-read-only-database-permissions-user).
+
 ### InfluxDB
 
 Add [influxdb](https://github.com/influxdata/influxdb-ruby) to your Gemfile and set:
@@ -785,7 +782,7 @@ data_sources:
     url: http://user:password@hostname:8086/database
 ```
 
-Supports [InfluxQL](https://docs.influxdata.com/influxdb/v1.8/query_language/explore-data/)
+Use a [read-only user](https://docs.influxdata.com/influxdb/v1.8/administration/authentication_and_authorization/). Supports [InfluxQL](https://docs.influxdata.com/influxdb/v1.8/query_language/explore-data/).
 
 ### MongoDB
 
@@ -799,6 +796,8 @@ data_sources:
     url: mongodb://user:password@hostname:27017/database
 ```
 
+Use a [read-only user](#mongodb).
+
 ### MySQL
 
 Add [mysql2](https://github.com/brianmario/mysql2) to your Gemfile (if it’s not there) and set:
@@ -808,6 +807,8 @@ data_sources:
   my_source:
     url: mysql2://user:password@hostname:3306/database
 ```
+
+Use a [read-only user](#mysql).
 
 ### Neo4j
 
@@ -820,6 +821,21 @@ data_sources:
     url: http://user:password@hostname:7474
 ```
 
+Use a [read-only user](https://neo4j.com/docs/cypher-manual/current/access-control/manage-privileges/).
+
+### OpenSearch
+
+Add [opensearch-ruby](https://github.com/opensearch-project/opensearch-ruby) to your Gemfile and set:
+
+```yml
+data_sources:
+  my_source:
+    adapter: opensearch
+    url: http://user:password@hostname:9200
+```
+
+Use a [read-only user](https://opensearch.org/docs/latest/security-plugin/access-control/permissions/).
+
 ### Oracle
 
 Add [activerecord-oracle_enhanced-adapter](https://github.com/rsim/oracle-enhanced) and [ruby-oci8](https://github.com/kubo/ruby-oci8) to your Gemfile and set:
@@ -829,6 +845,8 @@ data_sources:
   my_source:
     url: oracle-enhanced://user:password@hostname:1521/database
 ```
+
+Use a [read-only user](https://docs.oracle.com/cd/B19306_01/network.102/b14266/authoriz.htm).
 
 ### PostgreSQL
 
@@ -840,6 +858,8 @@ data_sources:
     url: postgres://user:password@hostname:5432/database
 ```
 
+Use a [read-only user](#postgresql).
+
 ### Presto
 
 Add [presto-client](https://github.com/treasure-data/presto-client-ruby) to your Gemfile and set:
@@ -849,6 +869,8 @@ data_sources:
   my_source:
     url: presto://user@hostname:8080/catalog
 ```
+
+Use a [read-only user](https://prestodb.io/docs/current/security/built-in-system-access-control.html).
 
 ### Salesforce
 
@@ -871,7 +893,7 @@ SALESFORCE_CLIENT_SECRET="client secret"
 SALESFORCE_API_VERSION="41.0"
 ```
 
-Supports [SOQL](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql.htm)
+Use a read-only user. Supports [SOQL](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql.htm).
 
 ### Socrata Open Data API (SODA)
 
@@ -885,7 +907,7 @@ data_sources:
     app_token: ...
 ```
 
-Supports [SoQL](https://dev.socrata.com/docs/functions/)
+Supports [SoQL](https://dev.socrata.com/docs/functions/).
 
 ### Snowflake
 
@@ -919,6 +941,8 @@ data_sources:
     conn_str: Driver=/path/to/libSnowflake.so;uid=user;pwd=password;server=host.snowflakecomputing.com
 ```
 
+Use a [read-only role](https://docs.snowflake.com/en/user-guide/security-access-control-configure.html).
+
 ### SQLite
 
 Add [sqlite3](https://github.com/sparklemotion/sqlite3-ruby) to your Gemfile and set:
@@ -938,6 +962,8 @@ data_sources:
   my_source:
     url: sqlserver://user:password@hostname:1433/database
 ```
+
+Use a [read-only user](https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/getting-started-with-database-engine-permissions?view=sql-server-ver15).
 
 ## Creating an Adapter
 
@@ -1014,6 +1040,22 @@ override_csp: true
 ```
 
 ## Upgrading
+
+### 2.6
+
+Custom adapters now need to specify how to quote variables in queries (there is no longer a default)
+
+```ruby
+class FooAdapter < Blazer::Adapters::BaseAdapter
+  def quoting
+    :backslash_escape # single quote strings and convert ' to \' and \ to \\
+    # or
+    :single_quote_escape # single quote strings and convert ' to ''
+    # or
+    ->(value) { ... } # custom method
+  end
+end
+```
 
 ### 2.3
 
